@@ -1,51 +1,65 @@
-import React from 'react';
+"use client";
+import React from "react";
 
-export const Table = (props) => {
-  const { headers = [], imgheaders = [], data = [], columns = [], imgcolumn = [] } = props;
+export function Table({ headers = [], imgheaders = [], data = [], columns = [], imgcolumn = [] }) {
+  if (!Array.isArray(data)) data = [];
 
   return (
-    <table className='table table-bordered'>
-      <thead>
-        <tr>
-          {[...headers, ...imgheaders].map((val, ind) => (
-            <th key={"th" + ind}>{val}</th>
-          ))}
-          <th>Edit</th>
-          <th>Delete</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        {data.map((obj, ind) => (
-          <tr key={"tr" + ind}>
-            
-            {/* normal text columns */}
-            {columns.map((col, i) => (
-              <td key={"td-text" + i}>{obj[col]}</td>
+    <div className="table-responsive mt-4">
+      <table className="table table-bordered">
+        <thead className="table-light">
+          <tr>
+            {columns.map((col, idx) => (
+              <th key={idx}>{headers[idx] || col}</th>
             ))}
-
-            {/* image columns */}
-            {imgcolumn.map((col, i) => (
-              <td key={"td-img" + i}>
-                {obj[col] && (
-                  <img
-                    src={obj[col]}
-                    alt={col}
-                    style={{ width: "50px", height: "50px", objectFit: "cover" }}
-                  />
-                )}
-              </td>
+            {imgcolumn.map((col, idx) => (
+              <th key={`img-${idx}`}>{imgheaders[idx] || col}</th>
             ))}
-            <td>
-              <button className="btn btn-sm btn-warning">Edit</button>
-            </td>   
-            <td>
-              <button className="btn btn-sm btn-danger">Delete</button>
-            </td>
+            <th>Edit</th>
+            <th>Delete</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-};
+        </thead>
+        <tbody>
+          {data.length === 0 ? (
+            <tr>
+              <td colSpan={columns.length + imgcolumn.length + 2} className="text-center">
+                No records found
+              </td>
+            </tr>
+          ) : (
+            data.map((row, rowIdx) => (
+              <tr key={`row-${rowIdx}`}>
+                {columns.map((col, colIdx) => (
+                  <td key={`td-${rowIdx}-${colIdx}`}>
+                    {Array.isArray(row[col]) ? row[col].join(", ") : row[col] || "-"}
+                  </td>
+                ))}
 
+                {imgcolumn.map((col, colIdx) => (
+                  <td key={`img-${rowIdx}-${colIdx}`}>
+                    {row[col] ? (
+                      <img
+                        src={row[col]}
+                        alt={col}
+                        style={{ width: "50px", height: "50px", objectFit: "cover" }}
+                      />
+                    ) : (
+                      "-"
+                    )}
+                  </td>
+                ))}
+
+                <td>
+                  <button className="btn btn-sm btn-warning">Edit</button>
+                </td>
+                <td>
+                  <button className="btn btn-sm btn-danger">Delete</button>
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
