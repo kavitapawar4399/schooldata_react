@@ -1,7 +1,15 @@
 "use client";
 import React from "react";
 
-export function Table({ headers = [], imgheaders = [], data = [], columns = [], imgcolumn = [] }) {
+export function Table({
+  headers = [],
+  imgheaders = [],
+  data = [],
+  columns = [],
+  imgcolumn = [],
+  onEdit,
+  onDelete,
+}) {
   if (!Array.isArray(data)) data = [];
 
   return (
@@ -12,36 +20,50 @@ export function Table({ headers = [], imgheaders = [], data = [], columns = [], 
             {columns.map((col, idx) => (
               <th key={idx}>{headers[idx] || col}</th>
             ))}
+
             {imgcolumn.map((col, idx) => (
               <th key={`img-${idx}`}>{imgheaders[idx] || col}</th>
             ))}
+
             <th>Edit</th>
             <th>Delete</th>
           </tr>
         </thead>
+
         <tbody>
           {data.length === 0 ? (
             <tr>
-              <td colSpan={columns.length + imgcolumn.length + 2} className="text-center">
+              <td
+                colSpan={columns.length + imgcolumn.length + 2}
+                className="text-center"
+              >
                 No records found
               </td>
             </tr>
           ) : (
             data.map((row, rowIdx) => (
-              <tr key={`row-${rowIdx}`}>
+              <tr key={row._id || rowIdx}>
+                {/* Normal Columns */}
                 {columns.map((col, colIdx) => (
                   <td key={`td-${rowIdx}-${colIdx}`}>
-                    {Array.isArray(row[col]) ? row[col].join(", ") : row[col] || "-"}
+                    {Array.isArray(row[col])
+                      ? row[col].join(", ")
+                      : row[col] || "-"}
                   </td>
                 ))}
 
+                {/* Image Columns */}
                 {imgcolumn.map((col, colIdx) => (
                   <td key={`img-${rowIdx}-${colIdx}`}>
                     {row[col] ? (
                       <img
                         src={row[col]}
                         alt={col}
-                        style={{ width: "50px", height: "50px", objectFit: "cover" }}
+                        style={{
+                          width: "50px",
+                          height: "50px",
+                          objectFit: "cover",
+                        }}
                       />
                     ) : (
                       "-"
@@ -49,11 +71,24 @@ export function Table({ headers = [], imgheaders = [], data = [], columns = [], 
                   </td>
                 ))}
 
+                {/* Edit Button */}
                 <td>
-                  <button className="btn btn-sm btn-warning">Edit</button>
+                  <button
+                    className="btn btn-sm btn-warning"
+                    onClick={() => onEdit && onEdit(row)}
+                  >
+                    Edit
+                  </button>
                 </td>
+
+                {/* Delete Button */}
                 <td>
-                  <button className="btn btn-sm btn-danger">Delete</button>
+                  <button
+                    className="btn btn-sm btn-danger"
+                    onClick={() => onDelete && onDelete(row._id)}
+                  >
+                    Delete
+                  </button>
                 </td>
               </tr>
             ))

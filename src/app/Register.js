@@ -14,6 +14,7 @@ export default function Register() {
   const [inputControls, setInputControls] = useState(inputControlsData);
   const [loading, setLoading] = useState(false);
   const [students, setStudents] = useState([]);
+  const [editId, setEditId] = useState(null);
   const fileRef = useRef(null);
 
   // ==============================
@@ -22,17 +23,12 @@ export default function Register() {
   const fnGetStudent = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/std/get-std`);
-
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
+      if (!res.ok) throw new Error("Fetch failed");
 
       const data = await res.json();
-
-      // Ensure always array
       setStudents(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("Fetch error:", err);
+      console.error(err);
       toast.error("Failed to fetch students");
       setStudents([]);
     }
@@ -60,14 +56,46 @@ export default function Register() {
   };
 
   // ==============================
-  // Register Student
+  // DELETE Student
+  // ==============================
+  const fnDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete?")) return;
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/std/delete-std/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) throw new Error("Delete failed");
+
+      toast.success("Deleted Successfully");
+      fnGetStudent();
+    } catch (err) {
+      toast.error("Delete error");
+    }
+  };
+
+  // ==============================
+  // EDIT Student
+  // ==============================
+  const fnEdit = (student) => {
+    const newInputControls = structuredClone(inputControls);
+
+    newInputControls.forEach((control) => {
+      control.val = student[control.name] || "";
+    });
+
+    setInputControls(newInputControls);
+    setEditId(student._id);
+  };
+
+  // ==============================
+  // REGISTER / UPDATE
   // ==============================
   const fnRegister = async () => {
     let isValid = true;
-
     const newInputControls = structuredClone(inputControls);
 
-    // Validation
     newInputControls.forEach((obj) => {
       const errorMsg = RegisterValidations(obj.name, obj.val);
       obj.error = errorMsg || "";
@@ -81,7 +109,6 @@ export default function Register() {
       return;
     }
 
-    // Create Payload
     const payload = {};
     newInputControls.forEach((obj) => {
       payload[obj.name] = obj.val;
@@ -90,41 +117,43 @@ export default function Register() {
     try {
       setLoading(true);
 
-      const res = await fetch(`${API_BASE_URL}/std/save-std`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      let res;
 
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-
-      const data = await res.json();
-
-      if (data.acknowledged && data.insertedId) {
-        toast.success("Registered Successfully");
-
-        // Refresh table
-        await fnGetStudent();
-
-        // Clear form
-        const clearedInputControls = newInputControls.map((obj) => ({
-          ...obj,
-          val: "",
-          error: "",
-        }));
-
-        setInputControls(clearedInputControls);
-
-        if (fileRef.current) fileRef.current.value = "";
+      if (editId) {
+        // UPDATE
+        res = await fetch(`${API_BASE_URL}/std/update-std/${editId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
       } else {
-        toast.error("Error saving student");
+        // CREATE
+        res = await fetch(`${API_BASE_URL}/std/save-std`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
       }
+
+      if (!res.ok) throw new Error("Operation failed");
+
+      toast.success(editId ? "Updated Successfully" : "Registered Successfully");
+
+      setEditId(null);
+      fnGetStudent();
+
+      // Clear form
+      const clearedInputControls = newInputControls.map((obj) => ({
+        ...obj,
+        val: "",
+        error: "",
+      }));
+
+      setInputControls(clearedInputControls);
+
+      if (fileRef.current) fileRef.current.value = "";
     } catch (err) {
-      console.error("Register error:", err);
+      console.error(err);
       toast.error("Server error");
     } finally {
       setLoading(false);
@@ -133,7 +162,9 @@ export default function Register() {
 
   return (
     <div>
-      <h3 className="text-center mx-3">Register</h3>
+      <h3 className="text-center mx-3">
+        {editId ? "Update Student" : "Register"}
+      </h3>
 
       <div className="container-fluid">
         {inputControls.map((control, index) => (
@@ -153,18 +184,19 @@ export default function Register() {
 
         <div className="text-center mt-3">
           <button onClick={fnRegister} className="btn btn-primary">
-            Register
+            {editId ? "Update" : "Register"}
           </button>
         </div>
       </div>
 
-      {/* Students Table */}
       <Table
         headers={["UserID", "Password", "Gender", "Hobbies", "Country"]}
         imgheaders={["Photo"]}
-        data={Array.isArray(students) ? students : []}
+        data={students}
         columns={["userId", "password", "gender", "hobbies", "country"]}
         imgcolumn={["photo"]}
+        onEdit={fnEdit}
+        onDelete={fnDelete}
       />
 
       {loading && <Loader />}
