@@ -8,7 +8,6 @@ import { Loader } from "./Component/Loader";
 import { Table } from "./Component/Table";
 import "react-toastify/dist/ReactToastify.css";
 
-// Change this to your Render backend URL
 const API_BASE_URL = "https://schooldata-server.onrender.com";
 
 export default function Register() {
@@ -17,17 +16,25 @@ export default function Register() {
   const [students, setStudents] = useState([]);
   const fileRef = useRef(null);
 
-  // Fetch students from backend
+  // ==============================
+  // Fetch Students
+  // ==============================
   const fnGetStudent = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/std/get-std`);
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
       const data = await res.json();
+
+      // Ensure always array
       setStudents(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Fetch error:", err);
-      setStudents([]);
       toast.error("Failed to fetch students");
+      setStudents([]);
     }
   };
 
@@ -35,67 +42,89 @@ export default function Register() {
     fnGetStudent();
   }, []);
 
-  // Handle input change
+  // ==============================
+  // Handle Input Change
+  // ==============================
   const fnchange = (eve) => {
     const { name, value } = eve.target;
+
     const newInputControls = structuredClone(inputControls);
     const inputObj = newInputControls.find((obj) => obj.name === name);
+
     if (!inputObj) return;
+
     inputObj.val = value;
     inputObj.error = RegisterValidations(name, value);
+
     setInputControls(newInputControls);
   };
 
-  // Register new student
+  // ==============================
+  // Register Student
+  // ==============================
   const fnRegister = async () => {
     let isValid = true;
+
     const newInputControls = structuredClone(inputControls);
 
+    // Validation
     newInputControls.forEach((obj) => {
-      const errormsg = RegisterValidations(obj.name, obj.val);
-      obj.error = errormsg || "";
-      if (errormsg || !obj.val) isValid = false;
+      const errorMsg = RegisterValidations(obj.name, obj.val);
+      obj.error = errorMsg || "";
+      if (errorMsg || !obj.val) isValid = false;
     });
 
     setInputControls(newInputControls);
+
     if (!isValid) {
-      alert("Enter Detail");
+      toast.error("Please enter all details correctly");
       return;
     }
 
-    // Prepare FormData for possible file upload
-    const formData = new FormData();
+    // Create Payload
+    const payload = {};
     newInputControls.forEach((obj) => {
-      formData.append(obj.name, obj.val);
+      payload[obj.name] = obj.val;
     });
 
     try {
       setLoading(true);
+
       const res = await fetch(`${API_BASE_URL}/std/save-std`, {
         method: "POST",
-        body: formData, // sending FormData handles files automatically
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       });
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
 
       const data = await res.json();
 
       if (data.acknowledged && data.insertedId) {
         toast.success("Registered Successfully");
-        fnGetStudent();
+
+        // Refresh table
+        await fnGetStudent();
 
         // Clear form
-        const clearedInputControls = inputControls.map((obj) => ({
+        const clearedInputControls = newInputControls.map((obj) => ({
           ...obj,
           val: "",
           error: "",
         }));
+
         setInputControls(clearedInputControls);
 
         if (fileRef.current) fileRef.current.value = "";
       } else {
-        toast.error("Error saving user");
+        toast.error("Error saving student");
       }
     } catch (err) {
-      console.log(err);
+      console.error("Register error:", err);
       toast.error("Server error");
     } finally {
       setLoading(false);
@@ -129,11 +158,11 @@ export default function Register() {
         </div>
       </div>
 
-      {/* Table rendering */}
+      {/* Students Table */}
       <Table
         headers={["UserID", "Password", "Gender", "Hobbies", "Country"]}
         imgheaders={["Photo"]}
-        data={students}
+        data={Array.isArray(students) ? students : []}
         columns={["userId", "password", "gender", "hobbies", "country"]}
         imgcolumn={["photo"]}
       />
